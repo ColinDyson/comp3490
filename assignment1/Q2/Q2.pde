@@ -112,24 +112,25 @@ final int[] WIDTHS = {
   24
 };
 
-int[][][] outlines1;
-int[][][] outlines2;
+final color STRIP_COLOR = color(70, 237, 0);
+final color OUTLINE_COLOR = color(255, 0, 0);
+
+float[][][] outline1 = new float[2*STRIPS.length - 1][][];
+float[][][] outline2 = new float[2*STRIPS.length - 1][][];
 
 void setup(){
   size(640, 640, P3D);
   background(0, 0, 0);
   
-  outlines1 = STRIPS.clone();
-  outlines2 = STRIPS.clone();
-  
   for(int i = 0; i < STRIPS.length; i++){
     drawLine(i);
     calcOutlines(i);
+    drawOutlines(i);
   }
 }
 
 void drawLine(int i){
-  stroke(70, 237, 0);
+  stroke(STRIP_COLOR);
   strokeWeight(2);
   noFill();
   
@@ -141,52 +142,84 @@ void drawLine(int i){
 }
 
 void calcOutlines(int i){
+  float[] perpVector = {0, 0};
   int halfWidth = WIDTHS[i] / 2;
-  float slope;
-  float perpSlope;
-  float b;
-  float perpB;
   float dy;
   float dx;
+  
+  float newX1;
+  float newX2;
+  float newY1;
+  float newY2;
   
   for(int j = 1; j < STRIPS[i].length; j++){
     dx = STRIPS[i][j][0] - STRIPS[i][j-1][0];
     dy = STRIPS[i][j][1] - STRIPS[i][j-1][1];
     
-    //with dx = 0, just add halfWidth to the x coord
-    if(dx == 0){
-      outlines1[i][j][0] -= halfWidth;
-      outlines1[i][j-1][0] -= halfWidth;
-      outlines2[i][j][0] += halfWidth;
-      outlines2[i][j-1][0] += halfWidth;
-    }
-    //if dy = 0, add halfWidth to the y coord
-    else if(dy == 0) {
-      outlines1[i][j][1] -= halfWidth;
-      outlines1[i][j-1][1] -= halfWidth;
-      outlines2[i][j][1] += halfWidth;
-      outlines2[i][j-1][1] += halfWidth;
-    }
-    //otherwise we must find the equation of the perpendicular line
-    else {
-      slope = dy / dx;
-      perpSlope = -(1/slope);
-      b = STRIPS[i][j-1][1] - slope * STRIPS[i][j-1][0];
-      perpB = STRIPS[i][j -1][1] - perpSlope * STRIPS[i][j-1][0];
+    findPerpVector(dx, dy, perpVector);
+    normalizeVector(perpVector);
+    scaleVector(perpVector, halfWidth);
       
-      println("Shape " + i + " vertex " + j + ": Slope = " + slope + " b = " + b);
-    }
+    println("i: ", i, " j: ", j, " perpVector: ", perpVector[0], perpVector[1]);
+    
+    newX1 = STRIPS[i][j-1][0] - perpVector[0];
+    newX2 = STRIPS
+    
+    outline1.append(new float)STRIPS[i][j-1][0] - perpVector[0]) = (STRIPS[i][j-1][0] - perpVector[0]));
+    outline1[i][j-1][1] = STRIPS[i][j-1][1] - perpVector[1];
+    outline1[i][j-1][0] += perpVector[0];
+    outline1[i][j-1][1] += perpVector[1];
+    outline1[i][j][0] += perpVector[0];
+    outline1[i][j][1] += perpVector[1];
+    outline2[i][j-1][0] -= perpVector[0];
+    outline2[i][j-1][1] -= perpVector[1];
+    outline2[i][j][0] -= perpVector[0];
+    outline2[i][j][1] -= perpVector[1];
   }
 }
 
+void drawOutlines(int i){
+  stroke(OUTLINE_COLOR);
+  strokeWeight(2);
+  noFill();
+  
+  beginShape(LINE);
+  for(int j = 0; j < outline1[i].length; j++){
+    vertex(outline1[i][j][0], outline1[i][j][1]);
+  }
+  endShape();
+  
+  beginShape(LINE);
+  for(int j = 0; j < outline2[i].length; j++){
+    vertex(outline2[i][j][0], outline2[i][j][1]);
+  }
+  endShape();
+}
+
 float crossProduct(float[] a, float[] b){
-    return (a[0]*b[1]) - (a[1]*b[0]);
+  return (a[0]*b[1]) - (a[1]*b[0]);
 }
 
 float dotProduct(float[] a, float[] b){
   return (a[0]*b[0] + a[1]*b[1]);
 }
 
-float magnitude(float[] v){
-  return sqrt(v[0]*v[0] + v[1]*v[1]);
+float magnitude(float x, float y){
+  return sqrt(x*x + y*y);
+}
+
+void scaleVector(float[] vector, float scale){
+  vector[0] *= scale;
+  vector[1] *= scale;
+}
+
+void normalizeVector(float[] vector) {
+  float magnitude = magnitude(vector[0], vector[1]);
+  vector[0] /= magnitude;
+  vector[1] /= magnitude;
+}
+
+void findPerpVector(float x, float y, float[]perpVector){
+  perpVector[0] = y;
+  perpVector[1] = -x;
 }

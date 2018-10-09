@@ -16,9 +16,9 @@ void setup() {
   
   //Swap petalColor assignment lines to change whether petal color is chosen randomly on every row or every petal
   for(int i = FIBONACCI.length - 1; i >= 0; i--){
-    //petalColor = pickColor(petalColor);
+    petalColor = pickColor(petalColor);
     for(int j = 0; j <= FIBONACCI[i]; j++){
-      petalColor = pickColor(petalColor);
+      //petalColor = pickColor(petalColor);
       drawPetal(petalColor, scaleFactor);
       rotate(petalAngle);
       petalAngle += PI/PHI;
