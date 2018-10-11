@@ -127,34 +127,58 @@ public class Point {
   }
   
   public boolean equals(Point other) {
-    return abs(this.x - other.x) <= 0.1f && abs(this.y - other.y) <= 0.1f;
+    return abs(this.x - other.x) <= 0.01f && abs(this.y - other.y) <= 0.01f;
+  }
+  
+  public String toString() {
+   return "[" + this.x + ", " + this.y + "]";
   }
 }
 
 public class Line {
+  ArrayList<Point> points;
   Point start;
   Point end;
+  int verticesCount = 0;
   
   Line(Point start, Point end) {
+    this.points = new ArrayList<Point>();
     this.start = start;
     this.end = end;
+    points.add(start);
+    points.add(end);
+    this.verticesCount = 2;
   }
   
   float slope() {
     return (this.end.y - this.start.y) / (this.end.x - this.start.x);
+  }
+  
+  String toString(){
+   return this.start.toString() + " - " + this.end.toString();
+  }
+  
+  void add(Point point) {
+    if(this.points.size() > 2) {
+      this.points.add(this.points.size() - 2, point);
+    }
+    else {
+      this.points.add(this.points.size() - 1, point);
+    }
+    this.verticesCount++;
   }
 }
 
 final color STRIP_COLOR = color(70, 237, 0);
 final color OUTLINE_COLOR = color(255, 0, 0);
 
-ArrayList<ArrayList<Point>> outline = new ArrayList<ArrayList<Point>>(STRIPS.length);
-
 void setup(){
   size(640, 640, P3D);
   background(0, 0, 0);
   
+  ArrayList<ArrayList<Point>> outline = new ArrayList<ArrayList<Point>>(STRIPS.length);
   ArrayList<Point> currShape;
+  ArrayList<Line> modifiedOutline;
   
   //For each shape in the set
   for(int i = 0; i < STRIPS.length; i++){
@@ -165,48 +189,39 @@ void setup(){
     //draw the shape
     drawLine(i);
     findOutline(i, currShape);
-    if(STRIPS[i].length > 2){
-      findIntersections(i, currShape);
-    }
+    drawEndCaps(i);
+    modifiedOutline = findIntersections(currShape);
     //drawEndCaps(i);
     //findInnerAngles(i);
-    drawOutline(currShape);
+    drawOutline(modifiedOutline);
   }
 }
 
-void initLists() {
-  outline.add(new ArrayList<Point>());
-}
-
-void findIntersections(int i, ArrayList<Point> currShape){
-  int intersections = 0;
+ArrayList<Line> findIntersections(ArrayList<Point> currShape){
+  ArrayList<Line> finalOutline = new ArrayList<Line>();
   Line currLine;
   Line checkLine;
   Point intersection = null;
   
-  for(int j = 0; j + 1 < currShape.size(); j++){
+  for(int j = 0; j + 1 < currShape.size(); j+=2){
     //For every line in the outline,
     currLine = new Line(currShape.get(j), currShape.get(j+1));
-    for(int k = 0; k + 1 < currShape.size(); k++){
+    finalOutline.add(currLine);
+    for(int k = 0; k + 1 < currShape.size(); k+=2){
       //check if the line intersects any other line
       if(k != j) {
         checkLine = new Line(currShape.get(k), currShape.get(k+1));
 
         intersection = checkIntersection(currLine, checkLine);
         
-        if(intersection != null 
-           && !currLine.start.equals(intersection)
-           && !currLine.end.equals(intersection)
-           && !checkLine.end.equals(intersection)
-           && !checkLine.start.equals(intersection)) {
-          println(currLine.start.x, currLine.start.y, checkLine.start.x, checkLine.start.y, intersection.x, intersection.y);
-          currShape.add(j + 1, intersection);
-          intersections++;
+        if(intersection != null) {
+          //if the intersection is not somewhere the lines meet
+          finalOutline.get(finalOutline.size() - 1).add(intersection);                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           
         }
       }
     }
   }
-  println("Shape ", i, " has ", intersections, " intersections");
+  return finalOutline;
 }
 
 Point checkIntersection(Line line1, Line line2) {
@@ -217,43 +232,46 @@ Point checkIntersection(Line line1, Line line2) {
   float intercept2;
   
   //println(line1, line2);
-  boolean line1Vert = line1.start.x == line1.end.x;
-  boolean line2Vert = line2.start.x == line2.end.x;
+  boolean line1Vert = floatEqual(line1.start.x, line1.end.x);
+  boolean line2Vert = floatEqual(line2.start.x, line2.end.x);
   
   //if only one of the lines is vertical, find equation of non vertical line using the form y =m*x + b
   if(line1Vert && !line2Vert){
      intercept2 = line2.start.y - (line2.slope() * line2.start.x);
-     intersectY = line2.slope()*line1.start.x + intercept2;
+     intersectY = line2.slope() * line1.start.x + intercept2;
      intersectX = line1.start.x;
+     //println("Line 1 is vert, ", intersectX, intersectY);
    }
    else if(line2Vert && !line1Vert){
      intercept1 = line1.start.y - (line1.slope() * line1.start.x);
-     intersectY = line1.slope()*line2.start.x + intercept1;
+     intersectY = line1.slope() * line2.start.x + intercept1;
      intersectX = line2.start.x;
+     //println("Line 2 is vert, ", intersectX, intersectY);
    }
    else {
      //Neither is vertical nor parallel
      intercept1 = line1.start.y - (line1.slope() * line1.start.x);
      intercept2 = line2.start.y - (line2.slope() * line2.start.x);
      
-     intersectX = -(intercept1 - intercept2) / (line1.slope() - line2.slope());
+     intersectX = (intercept1 - intercept2) / (line2.slope() - line1.slope());
      intersectY = line1.slope() * intersectX + intercept1;
    }
    
-   if((min(line1.start.x, line1.end.x) <= intersectX) && intersectX <= max(line1.start.x, line1.end.x) ||
-      (min(line2.start.x, line2.end.x) <= intersectX) && intersectX <= max(line2.start.x, line2.end.x)){
+   if((min(line1.start.x, line1.end.x) < intersectX) && intersectX < max(line1.start.x, line1.end.x) &&
+      (min(line2.start.x, line2.end.x) < intersectX) && intersectX < max(line2.start.x, line2.end.x)){
         //If the intersection point lies within both lines, we have a valid intersection
         intersectionPoint = new Point(intersectX, intersectY);
    }
-  
   return intersectionPoint;
 }
 
 void drawEndCaps(int i) {
   float startAngle = 0f;
   float endAngle = PI;
-  
+  stroke(OUTLINE_COLOR);
+  strokeWeight(2);
   arc(STRIPS[i][0][0], STRIPS[i][0][1], WIDTHS[i], WIDTHS[i], startAngle, endAngle);
+  arc(STRIPS[i][STRIPS[i].length - 1][0], STRIPS[i][STRIPS[i].length - 1][1], WIDTHS[i], WIDTHS[i], startAngle, endAngle);
 }
 
 void drawLine(int i){
@@ -300,23 +318,38 @@ void findOutline(int i, ArrayList<Point> currShape){
   }
 }
 
-void drawOutline(ArrayList<Point> currShape){
+void drawOutline(ArrayList<Line> currShape){
   stroke(OUTLINE_COLOR);
   strokeWeight(2);
+  Line currLine;
   Point vertex1;
   Point vertex2;
-  
-  //Draw a line between every pair of vertices without overlap
-  for(int j = 1; j < currShape.size(); j+=2){
-    vertex1 = currShape.get(j-1);
-    vertex2 = currShape.get(j);
-    
-    beginShape(LINE);
-    vertex(vertex1.x, vertex1.y);
-    vertex(vertex2.x, vertex2.y);
-    endShape();
-    //line(vertex1.x, vertex1.y, vertex2.x, vertex2.y);
+  boolean drawing = true;
+  //For each line in the shape
+  for(int j = 0; j < currShape.size(); j++){
+    currLine = currShape.get(j);
+    //For each vertex within the line
+    for(int k = 0; k + 1 < currLine.verticesCount; k++){
+      if(drawing) {
+        vertex1 = currLine.points.get(k);
+        vertex2 = currLine.points.get(k+1);
+        
+        //beginShape();
+        //vertex(vertex1.x, vertex1.y);
+        //vertex(vertex2.x, vertex2.y);
+        //endShape();
+        line(vertex1.x, vertex1.y, vertex2.x, vertex2.y);
+      }
+      if (currLine.points.get(k+1).x != currLine.end.x &&
+          currLine.points.get(k+1).y != currLine.end.y) {
+        drawing = !drawing;
+      }
+    }
   }
+}
+
+boolean floatEqual(float a, float b) {
+  return abs(a - b) <= 0.1f; 
 }
 
 float crossProduct(float[] a, float[] b){
