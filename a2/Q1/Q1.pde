@@ -2,7 +2,7 @@
 //second element is scale factor w.r.t. object's parent
 final float[][] TREE =
 {
-  {0.6, -0.2},
+  {0.6, -0.4},
   {1}
 };
 
@@ -135,6 +135,8 @@ final float WIDTH = 2.0f;
 final float HEIGHT = 2.0f;
 final float HOUSESCALE = 0.33f;
 
+int houseNumber = 0;
+
 void setup() {
   size(640, 640, P3D);
   ortho(-1f, 1f, 1f, -1f);
@@ -144,20 +146,21 @@ void setup() {
 }
 
 void draw() {
-  Point houseOrigin = new Point(0.0f, 0.0f);
+  float houseX;
+  float houseY;
   
   for(int i = 0; i < ROWS; i++) {
-    houseOrigin.y = i * (HEIGHT / ROWS) + (HEIGHT / (2 * ROWS));
-    houseOrigin.y -= 1;
+    houseY = i * (HEIGHT / ROWS) + (HEIGHT / (2 * ROWS));
+    houseY -= 1;
     for(int j = 0; j < COLUMNS; j++) {
-      houseOrigin.x = j * (WIDTH / COLUMNS) + (WIDTH / (2 * COLUMNS));
-      houseOrigin.x -= 1;
+      houseX = j * (WIDTH / COLUMNS) + (WIDTH / (2 * COLUMNS));
+      houseX -= 1;
 
       resetMatrix();
-      translate(houseOrigin.x, houseOrigin.y);
-      scale(HOUSESCALE);
+      translate(houseX, houseY);
+      scale(1f / ROWS);
       drawHouse();
-      //translate to houseOrigin, then scale to be 1/3 of screen wide/tall
+      houseNumber++;
     }
   }
 }
@@ -193,6 +196,9 @@ void drawHouse() {
   
   translate(ROOF[0][0], ROOF[0][1]);
   scale(ROOF[1][0]);
+  if (houseNumber == 4) {
+    rotate(PI);
+  }
   drawRoof();
 }
 
@@ -246,6 +252,8 @@ void drawRoof() {
   pushMatrix();
   translate(CHIMNEY[0][0], CHIMNEY[0][1]);
   scale(CHIMNEY[1][0]);
+  if (houseNumber == 3)
+    scale(2f);
   drawChimney();
   popMatrix();
   
