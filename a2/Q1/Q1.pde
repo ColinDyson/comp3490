@@ -84,49 +84,71 @@ final float[][] FRONT_WALL =
 final float[][] BRICK = 
 {
   {-1, -1},
-  {0.1},
+  {0.3},
+  //QUAD
   {-1, -0.5},
   {1, -0.5},
   {1, 0.5},
-  {-1, 0.5}
+  {-1, 0.5},
+  //LINES
+  {-0.7, 0.5},
+  {-0.1, -0.5},
+  {0.1, 0.5},
+  {-0.7, -0.5}
 };
 
 final float[][] DOOR =
 {
-  {-0.5, -0.6},
-  {0.5},
+  {-0.5, -0.3},
+  {0.7},
+  //Quads
   {-0.5, -1},
   {0.5, -1},
   {0.5, 1}, 
   {-0.5, 1},
-  {0.05, 0.8, 0}
+  {-0.4, -1},
+  {0.4, -1},
+  {0.4, 0.9},
+  {-0.4, 0.9},
+  //Circle
+  {0.3, 0, 0.2, 0.2}
 };
 
 final float[][] WINDOW = 
 { 
   {0.5, 0},
-  {0.25},
+  {0.4},
   {-1, -1},
   {1, -1},
   {1, 1}, 
-  {-1, 1},
-  {-0.8, -0.8},
-  {-0.1, -0.8},
-  {-0.1, -0.1},
-  {-0.8, -0.1},
-  {0.1, -0.8},
-  {0.8, -0.8},
-  {0.1, -0.1},
-  {0.8, -0.1},
-  {0.1, 0.1},
-  {0.8, 0.1},
-  {0.8, 0.8},
-  {0.1, 0.8},
-  {-0.8, 0.1},
-  {-0.1, 0.1},
-  {-0.1, 0.8},
-  {-0.8, 0.8}
+  {-1, 1}
 };
+
+final float[][] WINDOWPANE =
+{
+  {0, 0},
+  {0.45},
+  {-1, -1},
+  {1, -1},
+  {1, 1}, 
+  {-1, 1}
+};
+
+final float[] ROOFSCALES = {1.05, 1.3, 1.2, 1.1, 1, 0.9, 0.8, 0.7, 0.5};
+final float[][] WALLSCALES = 
+{
+  {4, 4},
+  {3, 5},
+  {4, 4}, 
+  {5, 4},
+  {5, 5},
+  {3, 6},
+  {6, 4},
+  {6, 6},
+  {4, 3}
+  
+};
+final float[] TREESCALES = {1.4, 1.2, 0.6, 1.1, 1, 0.7, 0.9, 1.25, 0.3};
 
 final int NUM_HOUSES = 9;
 final int ROWS = 3;
@@ -159,7 +181,7 @@ void draw() {
       resetMatrix();
       translate(houseX, houseY);
       scale(1f / ROWS);
-      drawHouse();
+      drawHouse(houseNumber);
       houseNumber++;
     }
   }
@@ -177,7 +199,7 @@ void drawBorder() {
   endShape();
 }
 
-void drawHouse() {
+void drawHouse(int houseNumber) {
   //House consists of roof, tree, front wall
   drawBorder();
   noStroke();
@@ -185,24 +207,23 @@ void drawHouse() {
   pushMatrix();
   translate(TREE[0][0], TREE[0][1]);
   scale(TREE[1][0]);
-  drawTree();
+  scale(TREESCALES[houseNumber]);
+  drawTree(houseNumber);
   popMatrix();
   
   pushMatrix();
   translate(FRONT_WALL[0][0], FRONT_WALL[0][1]);
   scale(FRONT_WALL[1][0]);
-  drawWall();
+  drawWall(houseNumber);
   popMatrix();
   
   translate(ROOF[0][0], ROOF[0][1]);
   scale(ROOF[1][0]);
-  if (houseNumber == 4) {
-    rotate(PI);
-  }
-  drawRoof();
+  scale(ROOFSCALES[houseNumber]);
+  drawRoof(houseNumber);
 }
 
-void drawTree() {
+void drawTree(int houseNumber) {
   //Tree consists of leaves and trunk
   pushMatrix();
   translate(TRUNK[0][0], TRUNK[0][1]);
@@ -215,24 +236,21 @@ void drawTree() {
   drawLeaves();
 }
 
-void drawWall() {
+void drawWall(int houseNumber) {
   //Wall consists of bricks, window, and door
-  int brickRows = 3;
-  int brickCols = 5;
   int brickWidth = 2;
   int brickHeight = 1;
-  fill(#AAAAAA);
-  quad(-1,-1, 1, -1, 1, 1, -1, 1);
+  float brickSpacing = 0.07;
   
   pushMatrix();
-  scale(BRICK[1][0]);
   translate(BRICK[0][0], BRICK[0][1]);
-  for(int i = 0; i < brickRows; i++) {
-    translate(brickHeight, 0);
-    for(int j = 0; j < brickCols; j++) {
-      translate(0, brickWidth);
+  scale(BRICK[1][0]);
+  for(int row = 0; row < WALLSCALES[houseNumber][0]; row++) {
+    for(int col = 0; col < WALLSCALES[houseNumber][1]; col++) {
       drawBrick();
+      translate(brickWidth + brickSpacing, 0);
     }
+    translate(-(brickWidth + brickSpacing) * WALLSCALES[houseNumber][1], brickHeight + brickSpacing);
   }
   popMatrix();
   
@@ -247,13 +265,11 @@ void drawWall() {
   drawWindow();
 }
 
-void drawRoof() {
+void drawRoof(int houseNumber) {
   //Roof consists of rooftop and chimney
   pushMatrix();
   translate(CHIMNEY[0][0], CHIMNEY[0][1]);
   scale(CHIMNEY[1][0]);
-  if (houseNumber == 3)
-    scale(2f);
   drawChimney();
   popMatrix();
   
@@ -293,22 +309,67 @@ void drawLeaves() {
 }
 
 void drawBrick() { 
-  strokeWeight(1);
-  stroke(#000000);
   beginShape(QUAD);
-  fill(0f, 255f, 0f);
+  fill(#9B310E);
   vertex(BRICK[2][0], BRICK[2][1]);
   vertex(BRICK[3][0], BRICK[3][1]);
   vertex(BRICK[4][0], BRICK[4][1]);
   vertex(BRICK[5][0], BRICK[5][1]);
   endShape();
+  
+  stroke(#000000);
+  strokeWeight(10);
+  line(BRICK[6][0], BRICK[6][1], BRICK[7][0], BRICK[7][1]);
+  line(BRICK[8][0], BRICK[8][1], BRICK[9][0], BRICK[9][1]);
   noStroke();
 }
 
 void drawDoor() {
+  beginShape(QUAD);
+  fill(#D60F0F);
+  vertex(DOOR[2][0], DOOR[2][1]);
+  vertex(DOOR[3][0], DOOR[3][1]);
+  vertex(DOOR[4][0], DOOR[4][1]);
+  vertex(DOOR[5][0], DOOR[5][1]);
+  
+  fill(#FFD436);
+  vertex(DOOR[6][0], DOOR[6][1]);
+  vertex(DOOR[7][0], DOOR[7][1]);
+  vertex(DOOR[8][0], DOOR[8][1]);
+  vertex(DOOR[9][0], DOOR[9][1]);
+  endShape();
+  
+  fill(#28EADF);
+  ellipse(DOOR[10][0], DOOR[10][1], DOOR[10][2], DOOR[10][3]);
+}
+
+void drawWindowPane(float x, float y) {
+  pushMatrix();
+  translate(x, y);
+  scale(WINDOWPANE[1][0]);
+  beginShape(QUAD);
+  fill(#B9D1FF);
+  vertex(WINDOWPANE[2][0], WINDOWPANE[2][1]);
+  vertex(WINDOWPANE[3][0], WINDOWPANE[3][1]);
+  vertex(WINDOWPANE[4][0], WINDOWPANE[4][1]);
+  vertex(WINDOWPANE[5][0], WINDOWPANE[5][1]);
+  endShape();
+  popMatrix();
 }
 
 void drawWindow() {
+  beginShape(QUAD);
+  fill(#D263F5);
+  vertex(WINDOW[2][0], WINDOW[2][1]);
+  vertex(WINDOW[3][0], WINDOW[3][1]);
+  vertex(WINDOW[4][0], WINDOW[4][1]);
+  vertex(WINDOW[5][0], WINDOW[5][1]);
+  endShape();
+
+  drawWindowPane(-0.5, -0.5);
+  drawWindowPane(0.5, -0.5);
+  drawWindowPane(0.5, 0.5);
+  drawWindowPane(-0.5, 0.5);
 }
 
 void drawChimney() {
