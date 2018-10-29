@@ -31,6 +31,10 @@ public class Triangle {
   Vertex v1;
   Vertex v2;
   Vertex center;
+  float translateX;
+  float translateY;
+  float rotate;
+  float scale;
   color colour;
   
   public Triangle(Vertex v0, Vertex v1, Vertex v2, color colour) {
@@ -42,6 +46,11 @@ public class Triangle {
     float yAvg = (v0.y + v1.y + v2.y)/3;
     float xAvg = (v0.x + v1.x + v2.x)/3;
     center = new Vertex(xAvg, yAvg);
+    
+    translateX = 0;
+    translateY = 0;
+    rotate = 0;
+    scale = 1;
   }
   
   public boolean contains(float x, float y) {
@@ -89,9 +98,11 @@ Triangle draggingTriangle = null;
 boolean drawing = false; //Flag for indicating vertex buffer is not empty
 
 void setup() {
+  hint(DISABLE_OPTIMIZED_STROKE);
   size(640, 640, P3D);
   background(#000000);
   surface.setResizable(true);
+  resetMatrix();
   
   triangles = new ArrayList<Triangle>();
   vertices = new ArrayList<Vertex>();
@@ -143,12 +154,20 @@ void drawTriangles() {
       stroke(#FFFFFF);
     }
     
+    pushMatrix();
+    translate(-currTri.center.x, -currTri.center.y);
+    scale(currTri.scale);
+    rotate(radians(currTri.rotate));
+    translate(currTri.center.x, currTri.center.y);
+    
     fill(currTri.colour);
     beginShape(TRIANGLE);
     vertex(currTri.v0.x, currTri.v0.y);
     vertex(currTri.v1.x, currTri.v1.y);
     vertex(currTri.v2.x, currTri.v2.y);
     endShape();
+    
+    popMatrix();
   }
 }
 
@@ -263,11 +282,10 @@ void mousePressed() {
       }
     }
   }
-  else {
-    //Otherwise, check if we are in a triangle. If we are, start dragging it
+  
+  if (draggingVertex == null) {
     selectedTri = inTriangle(mouseX, mouseY);
-    if(selectedTri != -1) {
-      println("Hit triangle", selectedTri);
+    if (selectedTri != -1) {
       drawing = false;
       vertexBuffer.clear();
       draggingTriangle = triangles.get(selectedTri);
@@ -289,6 +307,7 @@ void mouseDragged() {
     draggingVertex.y += dy;
   }
   else if (draggingTriangle != null) {
+    selectedTri = triangles.indexOf(draggingTriangle);
     translateTriangle(draggingTriangle, dx, dy);
   }
 }
@@ -301,6 +320,7 @@ void mouseClicked() {
      selectedColour = floor(mouseX / (PALETTE_WIDTH * width));
      println("Selected Colour", selectedColour);
      selectedTri = -1;
+     drawing = false;
      vertexBuffer.clear();
    }
    else if (hitTri != -1){
@@ -322,13 +342,15 @@ void keyPressed() {
     switch (keyCode) {
       case UP:
       case LEFT:
-        println("Left pressed");
-        for (Vertex v : vertices) {
-          v.x += 20;
+        if(selectedTri != -1) {
+          triangles.get(selectedTri).translateX -= 10;
         }
           
       case RIGHT:
       case DOWN:
+        if(selectedTri != -1) {
+          triangles.get(selectedTri).rotate += 10;
+        }
       default:
     }
   }
