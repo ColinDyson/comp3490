@@ -1,3 +1,5 @@
+//Created by Colin Dyson 
+
 public class Vector2D {
   float x;
   float y;
@@ -31,10 +33,6 @@ public class Triangle {
   Vertex v1;
   Vertex v2;
   Vertex center;
-  float translateX;
-  float translateY;
-  float rotate;
-  float scale;
   color colour;
   
   public Triangle(Vertex v0, Vertex v1, Vertex v2, color colour) {
@@ -43,14 +41,13 @@ public class Triangle {
     this.v2 = v2;
     this.colour = colour;
     
+    reCenter();
+  }
+  
+  public void reCenter() {
     float yAvg = (v0.y + v1.y + v2.y)/3;
     float xAvg = (v0.x + v1.x + v2.x)/3;
     center = new Vertex(xAvg, yAvg);
-    
-    translateX = 0;
-    translateY = 0;
-    rotate = 0;
-    scale = 1;
   }
   
   public boolean contains(float x, float y) {
@@ -86,6 +83,9 @@ final color HANDLE_FILL = #00FF88;
 final color OUTLINE_COLOUR = #00FF88;
 final float OUTLINE_WEIGHT = 3;
 final float GRAVITY = 7;
+final float TRANSLATE_VALUE = 10;
+final float SCALE_VALUE = 0.1;
+final float ROTATE_VALUE = 3.75;
 
 ArrayList<Triangle> triangles;
 ArrayList<Vertex> vertices;
@@ -96,6 +96,8 @@ int selectedTri = -1; //index of currently highlighted triangle in triangles
 Vertex draggingVertex = null; //Vertex user is currently dragging
 Triangle draggingTriangle = null;
 boolean drawing = false; //Flag for indicating vertex buffer is not empty
+float[] viewTranslate = {0, 0};
+float viewScale = 1;
 
 void setup() {
   hint(DISABLE_OPTIMIZED_STROKE);
@@ -111,10 +113,13 @@ void setup() {
 
 void draw() {
   clear();
+  drawPalette();
+  translate(viewTranslate[0], viewTranslate[1]);
+  scale(viewScale);
+  
   if (drawing) {
     drawPreviewLine();
   }
-  drawPalette();
   drawTriangles();
   if (selectedTri != -1) {
     drawHandles(triangles.get(selectedTri));
@@ -123,16 +128,18 @@ void draw() {
 
 void drawPreviewLine() {
   //Draws a line strip connecting the first 2 elements of our vertex buffer
+  float[] mouseCoords = findMouse(mouseX, mouseY);
   Vertex firstVertex = vertexBuffer.get(0);
   Vertex lastVertex = vertexBuffer.get(vertexBuffer.size() - 1);
   
   strokeWeight(1);
   stroke(#FFFFFF);
   line(firstVertex.x, firstVertex.y, lastVertex.x, lastVertex.y);
-  line(lastVertex.x, lastVertex.y, mouseX, mouseY);
+  line(lastVertex.x, lastVertex.y, mouseCoords[0], mouseCoords[1]);
 }
 
 void drawHandles(Triangle tri) {
+  noStroke();
   fill(HANDLE_FILL);
   ellipse(tri.v0.x, tri.v0.y, HANDLE_RADIUS, HANDLE_RADIUS);
   ellipse(tri.v1.x, tri.v1.y, HANDLE_RADIUS, HANDLE_RADIUS);
@@ -154,20 +161,12 @@ void drawTriangles() {
       stroke(#FFFFFF);
     }
     
-    pushMatrix();
-    translate(-currTri.center.x, -currTri.center.y);
-    scale(currTri.scale);
-    rotate(radians(currTri.rotate));
-    translate(currTri.center.x, currTri.center.y);
-    
     fill(currTri.colour);
     beginShape(TRIANGLE);
     vertex(currTri.v0.x, currTri.v0.y);
     vertex(currTri.v1.x, currTri.v1.y);
     vertex(currTri.v2.x, currTri.v2.y);
     endShape();
-    
-    popMatrix();
   }
 }
 
@@ -209,7 +208,7 @@ void createVertex(float x, float y) {
   //nearestVertexDistance ensures we simply use the closest vertex found within GRAVITY (in case multiple vertices are dragged to within GRAVITY of eachother)
   for (int i = 0; i < vertices.size(); i++) {
     float d = vertices.get(i).squareDistance(newV);
-    if (d <= GRAVITY && d < nearestVertexDistance) {
+    if (d <= (GRAVITY/viewScale * GRAVITY/viewScale) && d < nearestVertexDistance) {
       newV = vertices.get(i);
       nearestVertexDistance = d;
     }
@@ -251,40 +250,84 @@ void translateTriangle(Triangle tri, float x, float y) {
   tri.v1.y += y;
   tri.v2.x += x;
   tri.v2.y += y;
+  
+  tri.reCenter();
 }
 
 void rotateTriangle(Triangle tri, float angle) {
+  Vertex[] verts = {tri.v0, tri.v1, tri.v2};
+  
+  for (int i = 0; i < verts.length; i++) {
+    float sin = sin(radians(angle));
+    float cos = cos(radians(angle));
+    
+    verts[i].x -= tri.center.x;
+    verts[i].y -= tri.center.y;
+    
+    float newX = verts[i].x * cos - verts[i].y * sin;
+    float newY = verts[i].x * sin + verts[i].y * cos;
+    
+    verts[i].x = tri.center.x + newX;
+    verts[i].y = tri.center.y + newY;
+  }
+  
+  tri.reCenter();
 }
 
 void scaleTriangle(Triangle tri, float scale) {
+  //Calculate vectors from each vertex to the center of the triangle. Multiply the vector and add it to the center to find our new vertex
+  Vector2D[] vectors = {new Vector2D (tri.v0.x - tri.center.x, tri.v0.y - tri.center.y),
+                        new Vector2D (tri.v1.x - tri.center.x, tri.v1.y - tri.center.y),
+                        new Vector2D (tri.v2.x - tri.center.x, tri.v2.y - tri.center.y)};
+  
+  for (int i = 0; i < vectors.length; i++) {
+    vectors[i].x *= scale;
+    vectors[i].y *= scale;
+  }
+  
+  tri.v0.x = tri.center.x + vectors[0].x;
+  tri.v0.y = tri.center.y + vectors[0].y;
+  tri.v1.x = tri.center.x + vectors[1].x;
+  tri.v1.y = tri.center.y + vectors[1].y;
+  tri.v2.x = tri.center.x + vectors[2].x;
+  tri.v2.y = tri.center.y + vectors[2].y;
+  
+  tri.reCenter();
 }
 
 void scaleView(float scale) {
-}
-
-void rotateView(float angle) {
+  viewScale += scale;
 }
 
 void translateView(float x, float y) {
+  viewTranslate[0] += x;
+  viewTranslate[1] += y;
+}
+
+void resetView() {
+  viewScale = 1;
+  viewTranslate[0] = 0;
+  viewTranslate[1] = 0;
 }
 
 void mousePressed() {
   //on mouse down, check if we have a triangle selected. If so, check if we are in a selection vertex. If so, begin dragging
+  float[] mouseCoords = findMouse(mouseX, mouseY);
   if (selectedTri != -1) {
     Triangle currTri = triangles.get(selectedTri);
     Vertex[] handles = {currTri.v0, currTri.v1, currTri.v2};
     
     for (int i = 0; i < handles.length && draggingVertex == null; i++) {
       //Finds the squared distance from the point the mouse was pressed to the center of each handle
-      float d = handles[i].squareDistance(new Vertex(mouseX, mouseY));
+      float d = handles[i].squareDistance(new Vertex(mouseCoords[0], mouseCoords[1]));
       if (d <= HANDLE_RADIUS * HANDLE_RADIUS) {
         draggingVertex = handles[i];
       }
     }
   }
-  
+  //If we havent landed on a handle, check to see if we landed on a triangle. If so, select it and begin dragging
   if (draggingVertex == null) {
-    selectedTri = inTriangle(mouseX, mouseY);
+    selectedTri = inTriangle(mouseCoords[0], mouseCoords[1]);
     if (selectedTri != -1) {
       drawing = false;
       vertexBuffer.clear();
@@ -293,14 +336,20 @@ void mousePressed() {
   }
 }
 
+float[] findMouse(float x, float y) {
+  return new float[] {(x - viewTranslate[0]) / viewScale, (y - viewTranslate[1]) / viewScale};
+}
+
 void mouseReleased() {
   draggingVertex = null;
   draggingTriangle = null;
 }
 
 void mouseDragged() {
-  float dx = mouseX - pmouseX;
-  float dy = mouseY - pmouseY;
+  float[] mouseCoords = findMouse(mouseX, mouseY);
+  float[] prevCoords = findMouse(pmouseX, pmouseY);
+  float dx = mouseCoords[0] - prevCoords[0];
+  float dy = mouseCoords[1] - prevCoords[1];
     
   if (draggingVertex != null) {
     draggingVertex.x += dx;
@@ -313,10 +362,14 @@ void mouseDragged() {
 }
 
 void mouseClicked() {
-   println("Click at", mouseX, mouseY);
-   int hitTri = inTriangle(mouseX, mouseY);
+   float[] mouseCoords = findMouse(mouseX, mouseY);
+   float mX = mouseCoords[0];
+   float mY = mouseCoords[1];
+   println("Click at", mX, mY);
+   int hitTri = inTriangle(mX, mY);
+
    if (mouseY >= (height - (PALETTE_HEIGHT * height))) {
-     //Click within colour palette
+     //Click within colour palette, using non-transformed coords since palette is not transformed with the view
      selectedColour = floor(mouseX / (PALETTE_WIDTH * width));
      println("Selected Colour", selectedColour);
      selectedTri = -1;
@@ -333,25 +386,81 @@ void mouseClicked() {
    else {
      //click on canvas
      selectedTri = -1;
-     createVertex(mouseX, mouseY);
+     createVertex(mX, mY);
    }
 }
 
 void keyPressed() {
-  if (key == CODED) {
-    switch (keyCode) {
-      case UP:
-      case LEFT:
-        if(selectedTri != -1) {
-          triangles.get(selectedTri).translateX -= 10;
-        }
-          
-      case RIGHT:
-      case DOWN:
-        if(selectedTri != -1) {
-          triangles.get(selectedTri).rotate += 10;
-        }
-      default:
-    }
+  switch(key) {
+    case 'w':
+      println("Up");
+      if(selectedTri != -1) {
+        translateTriangle(triangles.get(selectedTri), 0, 1*TRANSLATE_VALUE);
+      }
+      else {
+        translateView(0, -1*TRANSLATE_VALUE);
+      }
+      break;
+    case 's':
+      println("Down");
+      if(selectedTri != -1) {
+        translateTriangle(triangles.get(selectedTri), 0, 1*TRANSLATE_VALUE);
+      }
+      else {
+        translateView(0, -1*TRANSLATE_VALUE);
+      }
+      break;
+    case 'a':
+      println("Left");
+      if(selectedTri != -1) {
+        translateTriangle(triangles.get(selectedTri), -1*TRANSLATE_VALUE, 0);
+      }
+      else {
+        translateView(1*TRANSLATE_VALUE, 0);
+      }
+      break;
+    case 'd':
+      println("Right");
+      if(selectedTri != -1) {
+        translateTriangle(triangles.get(selectedTri), 1*TRANSLATE_VALUE, 0);
+      }
+      else {
+        translateView(-1*TRANSLATE_VALUE, 0);
+      }
+      break;
+    case 'c':
+      println("Scale Down");
+      if(selectedTri != -1) {
+        scaleTriangle(triangles.get(selectedTri), 1 - SCALE_VALUE);
+      }
+      else { 
+        scaleView(SCALE_VALUE);
+      }
+      break;
+    case 'v':
+      println("Scale UP");
+      if(selectedTri != -1) {
+        scaleTriangle(triangles.get(selectedTri), 1 + SCALE_VALUE);
+      }
+      else {
+        scaleView(-SCALE_VALUE);
+      }
+      break;
+    case 'e':
+      if(selectedTri != -1) {
+        println("Rotate CCW");
+        rotateTriangle(triangles.get(selectedTri), -ROTATE_VALUE);
+      }
+      break;
+    case 'r':
+      if(selectedTri != -1) {
+        println("Rotate CW");
+        rotateTriangle(triangles.get(selectedTri), ROTATE_VALUE);
+      }
+      break;
+    case 'z':
+      println("Reset");
+      resetView();
+    default: break;
   }
 }
