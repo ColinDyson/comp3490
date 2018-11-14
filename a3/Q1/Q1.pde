@@ -55,27 +55,27 @@ public class Vertex {
 public class Particle {
   Vertex position;
   Vector velocity;
-  color colour;
+  int hue;
   int lifespan;
   long birth;
   
-  public Particle() {
-    position = new Vertex(random(-1 + P_RADIUS, 1 - P_RADIUS), random(-1 + P_RADIUS, 1 - P_RADIUS));
+  public Particle(Vertex position) {
+    this.position = position;
+    hue = int(random(0, 359));
     velocity = new Vector(random(-MAX_VELOCITY, MAX_VELOCITY), random(-MAX_VELOCITY, MAX_VELOCITY));
-    colour = #0000FF;
     birth = System.currentTimeMillis();
     lifespan = int(random(MIN_P_LIFE, MAX_P_LIFE));
   }
 }
 
 final float BOUNDS = 1;
-final float P_RADIUS = 0.1;
-final float P_COUNT = 10;
-final int MIN_P_LIFE = 300;
-final int MAX_P_LIFE = 1000; //milliseconds
+final float P_RADIUS = 0.2;
+final int P_COUNT = 10; //Typical population at any time
+final int MIN_P_LIFE = 3000;
+final int MAX_P_LIFE = 10000; //milliseconds
 final float MAX_VELOCITY = 0.1;
-final float P_MASS = 1;
 final float T_STEP = 0.1;
+final float BIRTH_RATE = 10; //With a population of P_COUNT, there is a 10% chance to birth a new particle
 
 ArrayList<Particle> particles;
 
@@ -83,38 +83,90 @@ void setup() {
   size(640, 640, P3D);
   ortho(-1, 1, 1, -1);
   resetMatrix();
+  colorMode(HSB, 360, 100, 100); //We use HSB mode to easily animate the colour of our particles
   
   particles = new ArrayList<Particle>();
   for (int i = 0; i < P_COUNT; i++) {
-    particles.add(new Particle());
+    addParticle();
   }
 }
 
 void draw() {
   clear();
-  background(#000000);
-  strokeWeight(1);
-  stroke(#FFFFFF);
+  background(0, 0, 0);
+  noStroke();
   
   resetMatrix();
   
-  for (int i = 0; i < P_COUNT; i++) {
+  for (int i = 0; i < particles.size(); i++) {
     Particle currParticle = particles.get(i);
-    moveParticle(currParticle);
-    checkCollisions(currParticle);
-    drawParticle(currParticle);
+    long pAge = System.currentTimeMillis() - currParticle.birth;
+    if (pAge >= currParticle.lifespan) {
+      particles.remove(i);
+    }
+    else {
+      moveParticle(currParticle);
+      checkCollisions(currParticle);
+      drawParticle(currParticle);
+    }
+  }
+  birthParticles();
+}
+
+void birthParticles() {
+  int populationOffset = particles.size() - P_COUNT;
+
+  if (abs(populationOffset) <= 2) {
+    //If we are between 8 and 12 particles, add a chance to spawn more
+    int spawnRoll = (int)random(0, 100);
+    if (spawnRoll - (populationOffset * 10) <= BIRTH_RATE) {
+      addParticle();
+    }
+    println(particles.size());
   }
 }
+  
 
 void moveParticle(Particle p) {
   p.position.x += p.velocity.x * T_STEP;
   p.position.y += p.velocity.y * T_STEP;
 }
 
+void addParticle() {
+  //Spawns a particle ensuring it does not overlap with an existing particle
+  boolean collision = false;
+  boolean spawned = false;
+
+  while (!spawned) {
+    //Generate a random coordinate
+    float x = random(-BOUNDS + P_RADIUS, BOUNDS - P_RADIUS);
+    float y = random(-BOUNDS + P_RADIUS, BOUNDS - P_RADIUS);
+    Vertex newPosition = new Vertex(x, y);
+    
+    //Check if the coordinate collides with any particle
+    for (int i = 0; i < particles.size(); i++) {
+      if (newPosition.squareDistance(particles.get(i).position) <= 4 * P_RADIUS * P_RADIUS) {
+        collision = true;
+      }
+    }
+    
+    //Once we have a coordinate that does not collide with anything, spawn a particle there
+    if (!collision) {
+      particles.add(new Particle(newPosition));
+      spawned = true;
+    }
+    else {
+      collision = false;
+    }
+  }
+}
+
 void drawParticle(Particle p) {
   pushMatrix();
   translate(p.position.x, p.position.y);
-  fill(p.colour);
+  float pAge = System.currentTimeMillis() - p.birth; //Between 0 and 10000
+  pAge = pAge * 100f / (float)p.lifespan;
+  fill(p.hue, 100, 100 - pAge);
   ellipse(0, 0, P_RADIUS, P_RADIUS);
   popMatrix();
 }
