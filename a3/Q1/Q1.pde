@@ -122,7 +122,6 @@ void birthParticles() {
     if (spawnRoll - (populationOffset * 10) <= BIRTH_RATE) {
       addParticle();
     }
-    println(particles.size());
   }
 }
   
