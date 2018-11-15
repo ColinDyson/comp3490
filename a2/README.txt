@@ -73,3 +73,8 @@ From bottom-left to top right:
     leaves sheared by 20 degrees, wall sheared by -20 degrees
     window moved up and right, tree moved up and right
     5x3 brick wall
+
+Question 2:
+
+Note that triangles will be drawn on top of palette in case of overlap. While not stated in the assignment as a requiremnt, the gravity for vertex
+selection is multiplied as the view is scaled.
