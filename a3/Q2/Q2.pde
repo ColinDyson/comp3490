@@ -106,7 +106,7 @@ final float[] WRIST_HEIGHT_LIMITS = {-5, -1};
 final float[] ELBOW_TRANSLATE_LIMITS = {-4, 4};
 
 final float SLIDE_SPEED = 2;
-final float ROTATE_SPEED = 0.8;
+final float ROTATE_SPEED = 45;
 final float CLAW_SPEED = 1.5;
 final float GRASP_SPEED = 10;
 final float T_STEP = 0.02;
@@ -167,13 +167,9 @@ void drawMachine() {
   
   drawPortion(BASE, #000000);
   
-  if (sequence == 0) {
-    rotateArm();
-  }
+  rotateArm();
   drawPortion(ARM, #555555);
-  if (sequence == 0) {
-    translateElbow();
-  }
+  translateElbow();
   drawPortion(ELBOW, #00B74A);
   
   animateWrist();
@@ -195,33 +191,46 @@ void drawMachine() {
 }
 
 void rotateArm() {
-  ARM[1][1] += rotatingArm * ROTATE_SPEED;
+  //Only animate when not in sequence
+  if (sequence == 0) {
+    ARM[1][1] += rotatingArm * ROTATE_SPEED * T_STEP;
+  }
 }
 
 void translateElbow() {
-  if (ELBOW[0][0] + sliding * SLIDE_SPEED * T_STEP < ELBOW_TRANSLATE_LIMITS[0] ||
-      ELBOW[0][0] + sliding * SLIDE_SPEED * T_STEP > ELBOW_TRANSLATE_LIMITS[1]) {
-        sliding = 0;
-  }
-  else {
-    ELBOW[0][0] += sliding * SLIDE_SPEED * T_STEP;
+  if (sequence == 0) {
+    if (ELBOW[0][0] + sliding * SLIDE_SPEED * T_STEP < ELBOW_TRANSLATE_LIMITS[0] ||
+        ELBOW[0][0] + sliding * SLIDE_SPEED * T_STEP > ELBOW_TRANSLATE_LIMITS[1]) {
+          sliding = 0;
+    }
+    else {
+      ELBOW[0][0] += sliding * SLIDE_SPEED * T_STEP;
+    }
   }
 }
 
 void animateWrist() {
+  //Up and down
   if (WRIST[0][1] + movingClaw * CLAW_SPEED * T_STEP < WRIST_HEIGHT_LIMITS[0] ||
       WRIST[0][1] + movingClaw * CLAW_SPEED * T_STEP > WRIST_HEIGHT_LIMITS[1]) {
         movingClaw = 0;
+        //If we are in sequence step 2 and have reached a limit, the step is complete and we begin step 3
         if (sequence == 2) {
           sequence++;
         }
+        //If we finish step 4, the sequence is complete
         else if (sequence == 4) {
           sequence = 0;
         }
   }
   else {
     WRIST[0][1] += movingClaw * CLAW_SPEED * T_STEP;
-  } 
+  }
+  
+  //Rotation
+  if (sequence == 0) {
+    WRIST[1][1] += rotatingClaw * ROTATE_SPEED * T_STEP;
+  }
 }
 
 void animateClawPiece(int pieceNo) {
@@ -353,11 +362,11 @@ void keyPressed() {
         if (rotatingArm != -1) rotatingArm = -1;
         else rotatingArm = 0;
         break;
-      case 'd':
+      case 's':
         if (rotatingClaw != 1) rotatingClaw = 1;
         else rotatingClaw = 0;
         break;
-      case 's':
+      case 'd':
         if (rotatingClaw != -1) rotatingClaw = -1;
         else rotatingClaw = 0;
         break;
