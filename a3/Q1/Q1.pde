@@ -1,3 +1,5 @@
+//Created by Colin Dyson (7683407) on 11/13/2018
+
 public class Vector {
   float x;
   float y;
